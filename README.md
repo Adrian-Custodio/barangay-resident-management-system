@@ -38,13 +38,13 @@ Deployment target is a single-machine, offline-capable barangay office setup —
   - `AuditLog` — polymorphic action logging via `GenericForeignKey`, with zero dependency on the apps it logs
 - Migrations generated and verified against a clean SQLite database
 - Django admin registered for all models (manual data entry/inspection during development)
+- Login-gated resident CRUD (`residents` app), with fuzzy name search (`thefuzz`) and soft delete (`is_active`)
+- Face enrollment/verification (`recognition` app) via DeepFace/Facenet — see **Face recognition environment** below, it needs a second Python interpreter
 
 **Soon**
-- Custom views/forms for residents (currently only accessible via Django admin)
-- Fuzzy name search (`thefuzz` integration)
-- Face recognition enrollment/verification logic (DeepFace integration)
 - Document generation/templating and PDF output
 - Authentication-aware permissions per role
+- Audit log wiring
 - Deployment packaging (Waitress + PyInstaller)
 
 ## Setup
@@ -52,12 +52,45 @@ Deployment target is a single-machine, offline-capable barangay office setup —
 \`\`\`bash
 python3 -m venv venv
 source venv/bin/activate        # Windows: venv\\Scripts\\activate
-pip install django==5.2
+pip install django thefuzz Pillow
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver
 \`\`\`
 
-\`http://127.0.0.1:8000/admin\`
+\`http://127.0.0.1:8000/\`
+
+## Face recognition environment
+
+DeepFace depends on TensorFlow, which — as of this writing — has no build
+for Python 3.14 (the version the rest of this project runs on, on Ubuntu
+26.04). Rather than downgrade the whole project, face embedding extraction
+runs in a **separate Python 3.11 environment**, invoked as a subprocess per
+photo (see `recognition/face_engine.py` for the full rationale).
+
+To set it up:
+
+\`\`\`bash
+# Anaconda/Miniconda, because Ubuntu 26.04's own apt repos don't carry
+# python3.11 and the deadsnakes PPA didn't have a build for it either at
+# the time this was set up:
+curl -sL -o miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash miniconda.sh -b -p ~/miniconda3
+~/miniconda3/bin/conda create -y -n brms-face python=3.11
+~/miniconda3/envs/brms-face/bin/pip install deepface tf-keras "opencv-python==4.10.0.84"
+\`\`\`
+
+(`opencv-python` is pinned to 4.10 — the current 5.x release restructured
+its bundled data files and breaks DeepFace's OpenCV face detector, which
+expects the old `cv2/data/haarcascade_*.xml` path.)
+
+By default the app looks for that interpreter at
+\`~/miniconda3/envs/brms-face/bin/python\`. Override with the
+\`FACE_ENGINE_PYTHON\` environment variable if yours lives elsewhere.
+
+Each enrollment/verification call pays TensorFlow's cold-start cost
+(observed ~5s on this machine) since the subprocess isn't kept warm
+between requests — acceptable for a low-volume, human-triggered flow like
+this; see the docstring in `face_engine.py` for the trade-off.
 
 

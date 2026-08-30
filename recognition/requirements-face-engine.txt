@@ -1,0 +1,8 @@
+# Installed into a SEPARATE Python 3.11 environment, not the project's main
+# venv -- see "Face recognition environment" in README.md for why, and
+# face_engine.py for how the two interpreters talk to each other.
+#
+#   ~/miniconda3/envs/brms-face/bin/pip install -r recognition/requirements-face-engine.txt
+deepface==0.0.100
+tf-keras==2.21.0
+opencv-python==4.10.0.84

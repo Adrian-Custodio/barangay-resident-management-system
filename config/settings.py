@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -137,3 +138,27 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'residents:resident_list'
 LOGOUT_REDIRECT_URL = 'accounts:login'
+
+
+# Face recognition engine
+#
+# DeepFace requires TensorFlow, which has no build for the Python version
+# this project runs on (3.14, as of writing) -- see recognition/face_engine.py
+# for the full explanation. Face extraction runs in a separate interpreter,
+# a Python 3.11 environment with DeepFace/TensorFlow installed, invoked as a
+# subprocess per photo. FACE_ENGINE_PYTHON points at that interpreter.
+#
+# Overridable via env var so this doesn't hardcode one developer's home
+# directory into a file every contributor's checkout picks up; on the
+# eventual Windows/PyInstaller deployment target this will instead point at
+# a bundled portable Python, not a conda env.
+FACE_ENGINE_PYTHON = os.environ.get(
+    'FACE_ENGINE_PYTHON',
+    str(Path.home() / 'miniconda3' / 'envs' / 'brms-face' / 'bin' / 'python'),
+)
+FACE_ENGINE_TIMEOUT = 60  # seconds -- generous because a cold TensorFlow import is slow
+
+# DeepFace's own published threshold for Facenet + cosine distance
+# (see deepface.modules.verification.find_threshold). Distances below this
+# are considered the same person.
+FACE_MATCH_THRESHOLD = 0.40

@@ -26,5 +26,41 @@
   <div><dt>Contact number</dt><dd>{{ resident.contact_number|default:"—" }}</dd></div>
 </dl>
 
+<section class="panel">
+  <div class="panel__header">
+    <h2>Face recognition</h2>
+    {% if resident.face_profile %}
+      <span class="badge badge--active">Enrolled</span>
+    {% else %}
+      <span class="badge badge--inactive">Not enrolled</span>
+    {% endif %}
+  </div>
+  <div class="panel__actions">
+    <a href="{% url 'recognition:face_enroll' resident.pk %}" class="btn">
+      {% if resident.face_profile %}Re-enroll photo{% else %}Enroll photo{% endif %}
+    </a>
+    {% if resident.face_profile %}
+      <a href="{% url 'recognition:face_verify' resident.pk %}" class="btn">Verify identity</a>
+    {% endif %}
+  </div>
+  {% if resident.verification_attempts.all %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>When</th><th>Result</th><th>Distance</th><th>Threshold</th></tr></thead>
+      <tbody>
+        {% for attempt in resident.verification_attempts.all|slice:":5" %}
+        <tr>
+          <td>{{ attempt.attempted_at }}</td>
+          <td>{% if attempt.matched %}Match{% else %}No match{% endif %}</td>
+          <td>{{ attempt.distance|floatformat:4 }}</td>
+          <td>{{ attempt.threshold|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+
 <p><a href="{% url 'residents:resident_list' %}">&larr; Back to residents</a></p>
 {% endblock %}
