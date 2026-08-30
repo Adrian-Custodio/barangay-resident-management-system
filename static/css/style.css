@@ -125,8 +125,10 @@ h1 { font-size: 1.5rem; margin: 0 0 1rem; }
   font-size: 0.92rem;
   cursor: pointer;
   box-shadow: var(--shadow);
+  transition: background-color 0.12s ease, border-color 0.12s ease, transform 0.05s ease;
 }
 .btn:hover { background: #f0f2f4; }
+.btn:active { transform: translateY(1px); }
 
 .btn--primary { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
 .btn--primary:hover { background: var(--color-primary-dark); }
@@ -326,4 +328,17 @@ input:focus, select:focus, textarea:focus {
   .site-header, .no-print, .messages { display: none !important; }
   .page { padding: 0; max-width: none; }
   .document-sheet { box-shadow: none; border: none; max-width: none; padding: 0; }
+}
+
+/* --- Small screens --- */
+/* This is an internal office tool, primarily used at a front desk on a
+   full-size monitor -- so this isn't a mobile-first design -- but the
+   header and page-header flex rows shouldn't visibly break if the window
+   is narrower than that, e.g. a laptop in a half-split window. */
+@media (max-width: 640px) {
+  .site-header__inner { flex-wrap: wrap; row-gap: 0.5rem; }
+  .main-nav { flex-basis: 100%; order: 3; }
+  .page-header { flex-direction: column; align-items: flex-start; }
+  .document-sheet { padding: 1.75rem 1.25rem; }
+  .data-table th, .data-table td { padding: 0.5rem 0.6rem; }
 }
