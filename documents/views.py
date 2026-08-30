@@ -12,6 +12,8 @@ from django.views import View
 from xhtml2pdf import pisa
 
 from accounts.mixins import AdminRequiredMixin
+from audit.models import AuditLog
+from audit.services import log_action
 from residents.models import Resident
 
 from .forms import DocumentTypeForm, IssueDocumentForm
@@ -84,6 +86,10 @@ class IssueDocumentView(LoginRequiredMixin, View):
             document_type=form.cleaned_data["document_type"],
             purpose=form.cleaned_data["purpose"],
             issued_by=request.user,
+        )
+        log_action(
+            request.user, AuditLog.Action.DOCUMENT_ISSUED, issued_document,
+            detail=f"{issued_document.document_type.name} for {resident.full_name}",
         )
         messages.success(
             request,

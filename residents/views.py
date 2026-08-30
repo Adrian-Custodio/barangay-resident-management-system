@@ -7,6 +7,8 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 from thefuzz import process
 
 from accounts.mixins import AdminRequiredMixin
+from audit.models import AuditLog
+from audit.services import log_action
 
 from .forms import ResidentForm
 from .models import Resident
@@ -79,6 +81,7 @@ class ResidentCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
+        log_action(self.request.user, AuditLog.Action.CREATE, self.object)
         messages.success(self.request, f"Added resident {self.object.full_name}.")
         return response
 
@@ -93,6 +96,7 @@ class ResidentUpdateView(LoginRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
+        log_action(self.request.user, AuditLog.Action.UPDATE, self.object)
         messages.success(self.request, f"Updated {self.object.full_name}.")
         return response
 
@@ -128,5 +132,6 @@ class ResidentDeleteView(AdminRequiredMixin, DeleteView):
         # behavior this subclass exists to replace.
         self.object.is_active = False
         self.object.save(update_fields=["is_active", "updated_at"])
+        log_action(self.request.user, AuditLog.Action.DELETE, self.object, detail="Soft delete (is_active=False)")
         messages.success(self.request, f"Removed {self.object.full_name} from the active roll.")
         return HttpResponseRedirect(self.get_success_url())

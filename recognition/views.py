@@ -4,6 +4,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 
+from audit.models import AuditLog
+from audit.services import log_action
 from residents.models import Resident
 
 from .face_engine import FaceEngineError, NoFaceDetectedError, extract_embedding
@@ -102,6 +104,12 @@ class FaceVerifyView(LoginRequiredMixin, View):
 
         attempt = FaceVerificationAttempt.objects.create(
             resident=resident, distance=distance, threshold=threshold, matched=matched,
+        )
+        log_action(
+            request.user,
+            AuditLog.Action.FACE_VERIFY_SUCCESS if matched else AuditLog.Action.FACE_VERIFY_FAIL,
+            attempt,
+            detail=f"{resident.full_name}: distance={distance:.4f}, threshold={threshold}",
         )
 
         if matched:
