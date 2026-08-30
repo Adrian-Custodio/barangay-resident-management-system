@@ -23,6 +23,7 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
     path('residents/', include('residents.urls')),
     path('face/', include('recognition.urls')),
+    path('documents/', include('documents.urls')),
     # The resident list is the actual "home screen" for staff logging in --
     # there's no separate dashboard/landing page in this system, so root
     # just forwards there instead of rendering its own empty page.

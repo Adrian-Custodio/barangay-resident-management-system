@@ -13,6 +13,7 @@
       {% if user.is_authenticated %}
         <nav class="main-nav">
           <a href="{% url 'residents:resident_list' %}">Residents</a>
+          <a href="{% url 'documents:documenttype_list' %}">Document Types</a>
         </nav>
         <div class="user-menu">
           <span class="user-menu__name">{{ user.get_username }}{% if user.profile %} &middot; {{ user.profile.get_role_display }}{% endif %}</span>

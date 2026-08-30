@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Document Types - Barangay RMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Document Types</h1>
+  <a href="{% url 'documents:documenttype_create' %}" class="btn btn--primary">+ Add document type</a>
+</div>
+
+{% if document_types %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Name</th>
+        <th>Fee</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for document_type in document_types %}
+      <tr>
+        <td>{{ document_type.code }}</td>
+        <td>{{ document_type.name }}</td>
+        <td>{{ document_type.fee }}</td>
+        <td>
+          {% if document_type.is_active %}
+            <span class="badge badge--active">Active</span>
+          {% else %}
+            <span class="badge badge--inactive">Inactive</span>
+          {% endif %}
+        </td>
+        <td class="data-table__actions">
+          <a href="{% url 'documents:documenttype_update' document_type.pk %}">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="empty-state">No document types yet.</p>
+{% endif %}
+{% endblock %}

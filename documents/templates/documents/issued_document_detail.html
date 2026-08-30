@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}{{ issued_document.control_number }} - Barangay RMS{% endblock %}
+
+{% block content %}
+<div class="page-header no-print">
+  <h1>{{ issued_document.document_type.name }}</h1>
+  <div class="page-header__actions">
+    <a href="{% url 'documents:issued_document_pdf' issued_document.pk %}" class="btn" target="_blank">Download PDF</a>
+    <button type="button" class="btn btn--primary" onclick="window.print()">Print</button>
+  </div>
+</div>
+
+<div class="document-sheet">
+  <p class="document-sheet__control">Control No. {{ issued_document.control_number }}</p>
+  <div class="document-sheet__body">{{ rendered_body|linebreaks }}</div>
+  <dl class="document-sheet__meta">
+    <div><dt>Issued to</dt><dd>{{ issued_document.resident.full_name }}</dd></div>
+    <div><dt>Issued on</dt><dd>{{ issued_document.issued_at|date:"F j, Y" }}</dd></div>
+    <div><dt>Issued by</dt><dd>{{ issued_document.issued_by|default:"—" }}</dd></div>
+  </dl>
+</div>
+
+<p class="no-print"><a href="{% url 'residents:resident_detail' issued_document.resident.pk %}">&larr; Back to {{ issued_document.resident.full_name }}</a></p>
+{% endblock %}

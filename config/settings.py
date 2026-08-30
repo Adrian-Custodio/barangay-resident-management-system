@@ -162,3 +162,11 @@ FACE_ENGINE_TIMEOUT = 60  # seconds -- generous because a cold TensorFlow import
 # (see deepface.modules.verification.find_threshold). Distances below this
 # are considered the same person.
 FACE_MATCH_THRESHOLD = 0.40
+
+
+# Document issuance
+# Short code prefixed onto every generated control_number, e.g.
+# "BRGY-2026-0001". A placeholder until a specific barangay's real code is
+# configured -- overridable via env var rather than hardcoded so this file
+# doesn't need editing per deployment.
+BARANGAY_CODE = os.environ.get('BARANGAY_CODE', 'BRGY')

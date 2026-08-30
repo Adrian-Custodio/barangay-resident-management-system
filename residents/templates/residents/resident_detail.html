@@ -62,5 +62,33 @@
   {% endif %}
 </section>
 
+<section class="panel">
+  <div class="panel__header">
+    <h2>Documents</h2>
+  </div>
+  <div class="panel__actions">
+    <a href="{% url 'documents:issue_document' resident.pk %}" class="btn">Issue document</a>
+  </div>
+  {% if resident.issued_documents.all %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Control No.</th><th>Document</th><th>Issued</th><th></th></tr></thead>
+      <tbody>
+        {% for issued in resident.issued_documents.all|slice:":5" %}
+        <tr>
+          <td>{{ issued.control_number }}</td>
+          <td>{{ issued.document_type.name }}</td>
+          <td>{{ issued.issued_at|date:"M j, Y" }}</td>
+          <td class="data-table__actions"><a href="{% url 'documents:issued_document_detail' issued.pk %}">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty-state">No documents issued yet.</p>
+  {% endif %}
+</section>
+
 <p><a href="{% url 'residents:resident_list' %}">&larr; Back to residents</a></p>
 {% endblock %}

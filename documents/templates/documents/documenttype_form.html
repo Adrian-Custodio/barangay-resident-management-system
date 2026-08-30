@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}Edit{% else %}Add{% endif %} document type - Barangay RMS{% endblock %}
+
+{% block content %}
+<h1>{% if object %}Edit {{ object.name }}{% else %}Add document type{% endif %}</h1>
+
+<form method="post" class="stacked-form" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <ul class="form-errors">{% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% for field in form %}
+  <div class="field {% if field.errors %}field--error{% endif %} {% if field.name == 'template_body' %}field--wide{% endif %}">
+    {{ field.label_tag }}
+    {{ field }}
+    {% if field.help_text %}<p class="field__help">{{ field.help_text }}</p>{% endif %}
+    {% for error in field.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  </div>
+  {% endfor %}
+  <div class="form-actions">
+    <button type="submit" class="btn btn--primary">Save</button>
+    <a href="{% url 'documents:documenttype_list' %}" class="btn btn--ghost">Cancel</a>
+  </div>
+</form>
+{% endblock %}

@@ -40,9 +40,9 @@ Deployment target is a single-machine, offline-capable barangay office setup —
 - Django admin registered for all models (manual data entry/inspection during development)
 - Login-gated resident CRUD (`residents` app), with fuzzy name search (`thefuzz`) and soft delete (`is_active`)
 - Face enrollment/verification (`recognition` app) via DeepFace/Facenet — see **Face recognition environment** below, it needs a second Python interpreter
+- Document generation (`documents` app): DocumentType management, resident-scoped issuance with auto-generated `{BARANGAY_CODE}-{year}-{sequence}` control numbers, a printable HTML view, and PDF export via `xhtml2pdf`
 
 **Soon**
-- Document generation/templating and PDF output
 - Authentication-aware permissions per role
 - Audit log wiring
 - Deployment packaging (Waitress + PyInstaller)

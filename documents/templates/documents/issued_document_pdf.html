@@ -1,0 +1,31 @@
+<!-- Standalone, not extending base.html: xhtml2pdf's CSS support is a
+     subset of CSS 2.1 (no flexbox/grid, no external stylesheet loading
+     without a custom link_callback), so the print stylesheet used for
+     the on-screen view won't render correctly here. Keeping this
+     template's styling separate and simple avoids fighting the renderer. -->
+<html>
+<head>
+<style>
+  @page { size: letter; margin: 2.5cm; }
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 11pt; color: #1d2229; }
+  h1 { font-size: 14pt; text-align: center; margin-bottom: 0.2cm; }
+  .control-number { text-align: center; color: #5b6572; font-size: 9pt; margin-bottom: 1cm; }
+  .body { line-height: 1.6; margin-bottom: 1cm; }
+  table.meta { width: 100%; border-top: 1pt solid #d7dce1; padding-top: 0.4cm; font-size: 9pt; color: #5b6572; }
+  table.meta td { padding: 0.1cm 0; }
+  table.meta td.label { width: 30%; }
+</style>
+</head>
+<body>
+  <h1>{{ issued_document.document_type.name }}</h1>
+  <p class="control-number">Control No. {{ issued_document.control_number }}</p>
+
+  <div class="body">{{ rendered_body|linebreaks }}</div>
+
+  <table class="meta">
+    <tr><td class="label">Issued to</td><td>{{ issued_document.resident.full_name }}</td></tr>
+    <tr><td class="label">Issued on</td><td>{{ issued_document.issued_at|date:"F j, Y" }}</td></tr>
+    <tr><td class="label">Issued by</td><td>{{ issued_document.issued_by|default:"—" }}</td></tr>
+  </table>
+</body>
+</html>
