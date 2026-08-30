@@ -5,7 +5,9 @@
 {% block content %}
 <div class="page-header">
   <h1>Document Types</h1>
-  <a href="{% url 'documents:documenttype_create' %}" class="btn btn--primary">+ Add document type</a>
+  {% if user.profile.is_admin %}
+    <a href="{% url 'documents:documenttype_create' %}" class="btn btn--primary">+ Add document type</a>
+  {% endif %}
 </div>
 
 {% if document_types %}
@@ -17,7 +19,7 @@
         <th>Name</th>
         <th>Fee</th>
         <th>Status</th>
-        <th></th>
+        {% if user.profile.is_admin %}<th></th>{% endif %}
       </tr>
     </thead>
     <tbody>
@@ -33,9 +35,11 @@
             <span class="badge badge--inactive">Inactive</span>
           {% endif %}
         </td>
+        {% if user.profile.is_admin %}
         <td class="data-table__actions">
           <a href="{% url 'documents:documenttype_update' document_type.pk %}">Edit</a>
         </td>
+        {% endif %}
       </tr>
       {% endfor %}
     </tbody>

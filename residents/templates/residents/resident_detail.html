@@ -10,7 +10,7 @@
   </h1>
   <div class="page-header__actions">
     <a href="{% url 'residents:resident_update' resident.pk %}" class="btn">Edit</a>
-    {% if resident.is_active %}
+    {% if resident.is_active and user.profile.is_admin %}
       <a href="{% url 'residents:resident_delete' resident.pk %}" class="btn btn--danger">Remove</a>
     {% endif %}
   </div>

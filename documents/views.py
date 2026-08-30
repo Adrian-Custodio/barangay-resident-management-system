@@ -11,6 +11,7 @@ from django.views.generic.detail import SingleObjectMixin
 from django.views import View
 from xhtml2pdf import pisa
 
+from accounts.mixins import AdminRequiredMixin
 from residents.models import Resident
 
 from .forms import DocumentTypeForm, IssueDocumentForm
@@ -26,7 +27,15 @@ class DocumentTypeListView(LoginRequiredMixin, ListView):
     ordering = ["name"]
 
 
-class DocumentTypeCreateView(LoginRequiredMixin, CreateView):
+class DocumentTypeCreateView(AdminRequiredMixin, CreateView):
+    """
+    AdminRequiredMixin: a DocumentType's template_body is rendered
+    directly into every document generated from it (see rendering.py) --
+    letting any encoder edit that text is effectively letting them control
+    the wording of official barangay documents, which belongs with the
+    same role that can remove a resident from the roll.
+    """
+
     model = DocumentType
     form_class = DocumentTypeForm
     template_name = "documents/documenttype_form.html"
@@ -38,7 +47,7 @@ class DocumentTypeCreateView(LoginRequiredMixin, CreateView):
         return response
 
 
-class DocumentTypeUpdateView(LoginRequiredMixin, UpdateView):
+class DocumentTypeUpdateView(AdminRequiredMixin, UpdateView):
     model = DocumentType
     form_class = DocumentTypeForm
     template_name = "documents/documenttype_form.html"

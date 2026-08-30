@@ -6,6 +6,8 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 from thefuzz import process
 
+from accounts.mixins import AdminRequiredMixin
+
 from .forms import ResidentForm
 from .models import Resident
 
@@ -98,7 +100,7 @@ class ResidentUpdateView(LoginRequiredMixin, UpdateView):
         return reverse_lazy("residents:resident_detail", kwargs={"pk": self.object.pk})
 
 
-class ResidentDeleteView(LoginRequiredMixin, DeleteView):
+class ResidentDeleteView(AdminRequiredMixin, DeleteView):
     """
     "Delete" flips is_active rather than removing the row. A hard delete
     would either cascade-destroy every IssuedDocument/audit entry pointing
@@ -108,6 +110,11 @@ class ResidentDeleteView(LoginRequiredMixin, DeleteView):
     confirmation, POST performs the action) is still the right shape for
     this UX even though the underlying operation isn't a real deletion, so
     we keep the view and only override what actually happens on POST.
+
+    AdminRequiredMixin, not LoginRequiredMixin: removing a resident from
+    the active roll is exactly the kind of action the ADMIN/ENCODER split
+    exists for -- an encoder can create and update residents day-to-day,
+    but taking someone off the roll is an administrative decision.
     """
 
     model = Resident
