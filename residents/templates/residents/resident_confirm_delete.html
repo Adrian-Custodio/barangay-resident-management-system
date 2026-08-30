@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Remove {{ resident.full_name }} - Barangay RMS{% endblock %}
+
+{% block content %}
+<h1>Remove resident?</h1>
+<p>
+  This marks <strong>{{ resident.full_name }}</strong> (ID {{ resident.resident_id }}) as inactive.
+  It does not delete their record &mdash; past issued documents and verification
+  history are kept, and an administrator can restore the record later from
+  Django admin.
+</p>
+<form method="post">
+  {% csrf_token %}
+  <div class="form-actions">
+    <button type="submit" class="btn btn--danger">Yes, remove from active roll</button>
+    <a href="{% url 'residents:resident_detail' resident.pk %}" class="btn btn--ghost">Cancel</a>
+  </div>
+</form>
+{% endblock %}

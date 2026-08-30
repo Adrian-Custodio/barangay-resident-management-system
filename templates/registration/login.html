@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Log in - Barangay RMS{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <h1>Log in</h1>
+  <p class="auth-card__subtitle">Barangay Resident Management System</p>
+  <form method="post">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <ul class="form-errors">
+        {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    <div class="field">
+      {{ form.username.label_tag }}
+      {{ form.username }}
+    </div>
+    <div class="field">
+      {{ form.password.label_tag }}
+      {{ form.password }}
+    </div>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit" class="btn btn--primary btn--block">Log in</button>
+  </form>
+</div>
+{% endblock %}

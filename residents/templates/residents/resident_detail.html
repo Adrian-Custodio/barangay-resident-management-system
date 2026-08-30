@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}{{ resident.full_name }} - Barangay RMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>
+    {{ resident.full_name }}
+    {% if not resident.is_active %}<span class="badge badge--inactive">Inactive</span>{% endif %}
+  </h1>
+  <div class="page-header__actions">
+    <a href="{% url 'residents:resident_update' resident.pk %}" class="btn">Edit</a>
+    {% if resident.is_active %}
+      <a href="{% url 'residents:resident_delete' resident.pk %}" class="btn btn--danger">Remove</a>
+    {% endif %}
+  </div>
+</div>
+
+<dl class="detail-grid">
+  <div><dt>Resident ID</dt><dd>{{ resident.resident_id }}</dd></div>
+  <div><dt>Birth date</dt><dd>{{ resident.birth_date }}</dd></div>
+  <div><dt>Sex</dt><dd>{{ resident.get_sex_display }}</dd></div>
+  <div><dt>Civil status</dt><dd>{{ resident.get_civil_status_display }}</dd></div>
+  <div><dt>Address</dt><dd>{{ resident.address }}</dd></div>
+  <div><dt>Purok / Sitio</dt><dd>{{ resident.purok_or_sitio|default:"—" }}</dd></div>
+  <div><dt>Contact number</dt><dd>{{ resident.contact_number|default:"—" }}</dd></div>
+</dl>
+
+<p><a href="{% url 'residents:resident_list' %}">&larr; Back to residents</a></p>
+{% endblock %}

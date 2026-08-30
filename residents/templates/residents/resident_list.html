@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Residents - Barangay RMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Residents</h1>
+  <a href="{% url 'residents:resident_create' %}" class="btn btn--primary">+ Add resident</a>
+</div>
+
+<form method="get" class="search-form">
+  <input type="text" name="q" value="{{ query }}" placeholder="Search by name&hellip;" autofocus>
+  <button type="submit" class="btn">Search</button>
+  {% if query %}<a href="{% url 'residents:resident_list' %}" class="btn btn--ghost">Clear</a>{% endif %}
+</form>
+
+{% if residents %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Resident ID</th>
+        <th>Name</th>
+        <th>Birth date</th>
+        <th>Sex</th>
+        <th>Purok / Sitio</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for resident in residents %}
+      <tr>
+        <td>{{ resident.resident_id }}</td>
+        <td><a href="{% url 'residents:resident_detail' resident.pk %}">{{ resident.full_name }}</a></td>
+        <td>{{ resident.birth_date }}</td>
+        <td>{{ resident.get_sex_display }}</td>
+        <td>{{ resident.purok_or_sitio|default:"—" }}</td>
+        <td class="data-table__actions">
+          <a href="{% url 'residents:resident_update' resident.pk %}">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if is_paginated %}
+<nav class="pagination">
+  {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">&larr; Previous</a>
+  {% endif %}
+  <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}">Next &rarr;</a>
+  {% endif %}
+</nav>
+{% endif %}
+
+{% else %}
+<p class="empty-state">
+  {% if query %}No residents matched &ldquo;{{ query }}&rdquo;.{% else %}No residents yet.{% endif %}
+</p>
+{% endif %}
+{% endblock %}
