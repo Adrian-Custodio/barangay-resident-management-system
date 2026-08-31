@@ -16,7 +16,7 @@
   <div class="document-sheet__body">{{ rendered_body|linebreaks }}</div>
   <dl class="document-sheet__meta">
     <div><dt>Issued to</dt><dd>{{ issued_document.recipient_name }}{% if not issued_document.resident %} <span class="badge badge--inactive">No account</span>{% endif %}</dd></div>
-    <div><dt>Issued on</dt><dd>{{ issued_document.issued_at|date:"F j, Y" }}</dd></div>
+    <div><dt>Issued on</dt><dd>{{ issued_document.document_date|date:"F j, Y" }}</dd></div>
     <div><dt>Issued by</dt><dd>{{ issued_document.issued_by|default:"—" }}</dd></div>
   </dl>
 </div>

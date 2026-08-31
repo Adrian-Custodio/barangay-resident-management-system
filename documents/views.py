@@ -5,7 +5,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 from django.views import View
@@ -17,10 +18,16 @@ from audit.services import log_action
 from residents.models import Resident
 from residents.search import fuzzy_search_residents
 
-from .forms import DocumentTypeForm, IssueDocumentForm, WalkInIssueForm
+from .forms import (
+    DocumentReviewForm,
+    DocumentTypeForm,
+    IssueDocumentForm,
+    WalkInDocumentReviewForm,
+    WalkInIssueForm,
+)
 from .models import DocumentType, IssuedDocument
 from .numbering import issue_document
-from .rendering import build_subject, render_document_body
+from .rendering import WalkInSubject, build_subject, render_document_body, render_preview
 
 
 class DocumentTypeListView(LoginRequiredMixin, ListView):
@@ -68,9 +75,18 @@ class IssueDocumentView(LoginRequiredMixin, View):
     mirroring how face enrollment/verification are scoped -- an encoder's
     starting point is always "this resident", never a document floating
     free of one.
+
+    Two-phase, both POSTs to this same URL:
+      1. Choose a document type + purpose -> auto-populate a preview and
+         hand it to DocumentReviewForm for editing. Nothing is saved yet.
+      2. Confirm the (possibly edited) review form -> this is the one
+         moment issue_document() actually runs, assigning a real control
+         number. Distinguished from phase 1 by the presence of
+         "body_text" in POST data, which only the review form ever sends.
     """
 
     template_name = "documents/issue_document.html"
+    review_template_name = "documents/document_review.html"
 
     def get(self, request, pk):
         resident = get_object_or_404(Resident, pk=pk)
@@ -78,14 +94,49 @@ class IssueDocumentView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         resident = get_object_or_404(Resident, pk=pk)
+        if "body_text" in request.POST:
+            return self._finalize(request, resident)
+        return self._preview(request, resident)
+
+    def _preview(self, request, resident):
         form = IssueDocumentForm(request.POST)
         if not form.is_valid():
             return render(request, self.template_name, {"resident": resident, "form": form})
+
+        document_type = form.cleaned_data["document_type"]
+        purpose = form.cleaned_data["purpose"]
+        review_form = DocumentReviewForm(initial={
+            "document_type": document_type.pk,
+            "purpose": purpose,
+            "document_date": timezone.localdate(),
+            "body_text": render_preview(document_type, resident=resident, purpose=purpose),
+        })
+        return render(request, self.review_template_name, {
+            "resident": resident,
+            "document_type": document_type,
+            "recipient_label": resident.full_name,
+            "cancel_url": reverse("residents:resident_detail", args=[resident.pk]),
+            "form": review_form,
+        })
+
+    def _finalize(self, request, resident):
+        form = DocumentReviewForm(request.POST)
+        if not form.is_valid():
+            document_type = form.cleaned_data.get("document_type") or DocumentType.objects.filter(pk=request.POST.get("document_type")).first()
+            return render(request, self.review_template_name, {
+                "resident": resident,
+                "document_type": document_type,
+                "recipient_label": resident.full_name,
+                "cancel_url": reverse("residents:resident_detail", args=[resident.pk]),
+                "form": form,
+            })
 
         issued_document = issue_document(
             resident=resident,
             document_type=form.cleaned_data["document_type"],
             purpose=form.cleaned_data["purpose"],
+            document_date=form.cleaned_data["document_date"],
+            body_text=form.cleaned_data["body_text"],
             issued_by=request.user,
         )
         log_action(
@@ -119,6 +170,7 @@ class WalkInIssueView(LoginRequiredMixin, View):
     """
 
     template_name = "documents/walk_in_issue.html"
+    review_template_name = "documents/document_review.html"
 
     def get(self, request):
         query = request.GET.get("q", "").strip()
@@ -133,17 +185,54 @@ class WalkInIssueView(LoginRequiredMixin, View):
         return render(request, self.template_name, context)
 
     def post(self, request):
+        if "body_text" in request.POST:
+            return self._finalize(request)
+        return self._preview(request)
+
+    def _preview(self, request):
         form = WalkInIssueForm(request.POST)
         if not form.is_valid():
             query = request.POST.get("full_name", "")
             context = {"query": query, "matches": self._search(query), "manual": True, "form": form}
             return render(request, self.template_name, context)
 
+        document_type = form.cleaned_data["document_type"]
+        purpose = form.cleaned_data["purpose"]
+        walk_in_details = form.walk_in_details()
+        subject = WalkInSubject(**{k: v for k, v in walk_in_details.items()})
+
+        review_form = WalkInDocumentReviewForm(initial={
+            "document_type": document_type.pk,
+            "purpose": purpose,
+            "document_date": timezone.localdate(),
+            "body_text": render_preview(document_type, resident=subject, purpose=purpose),
+            **walk_in_details,
+        })
+        return render(request, self.review_template_name, {
+            "document_type": document_type,
+            "recipient_label": f"{walk_in_details['full_name']} (no account)",
+            "cancel_url": reverse("documents:walk_in_issue"),
+            "form": review_form,
+        })
+
+    def _finalize(self, request):
+        form = WalkInDocumentReviewForm(request.POST)
+        if not form.is_valid():
+            document_type = form.cleaned_data.get("document_type") or DocumentType.objects.filter(pk=request.POST.get("document_type")).first()
+            return render(request, self.review_template_name, {
+                "document_type": document_type,
+                "recipient_label": request.POST.get("full_name", ""),
+                "cancel_url": reverse("documents:walk_in_issue"),
+                "form": form,
+            })
+
         walk_in_details = form.walk_in_details()
         issued_document = issue_document(
             walk_in_details=walk_in_details,
             document_type=form.cleaned_data["document_type"],
             purpose=form.cleaned_data["purpose"],
+            document_date=form.cleaned_data["document_date"],
+            body_text=form.cleaned_data["body_text"],
             issued_by=request.user,
         )
         log_action(
@@ -166,6 +255,14 @@ class _RenderedDocumentMixin(SingleObjectMixin):
     model = IssuedDocument
 
     def get_rendered_body(self, issued_document):
+        if issued_document.body_text:
+            return issued_document.body_text
+        # Rows issued before body_text was captured at issuance time have
+        # none stored -- fall back to live-rendering from the current
+        # document_type.template_body so old records don't break. This is
+        # exactly the drift body_text exists to prevent going forward: an
+        # old row's displayed text can still change if its DocumentType's
+        # template is edited later, a new row's cannot.
         return render_document_body(
             issued_document.document_type,
             resident=build_subject(issued_document),

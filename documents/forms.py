@@ -18,7 +18,9 @@ class DocumentTypeForm(forms.ModelForm):
             "template_body": (
                 "Django template syntax. Available variables: "
                 "{{ resident }}, {{ document.control_number }}, "
-                "{{ document.issued_at }}, {{ purpose }}."
+                "{{ document.document_date }}, {{ purpose }}. "
+                "control_number is blank while an admin is still reviewing the "
+                "document -- it's only assigned once they finalize it."
             ),
         }
 
@@ -73,6 +75,64 @@ class WalkInIssueForm(forms.Form):
             "full_name": data["full_name"],
             "address": data["address"],
             "birth_date": data["birth_date"].isoformat() if data["birth_date"] else "",
+            "sex": data["sex"],
+            "civil_status": data["civil_status"],
+            "purok_or_sitio": data["purok_or_sitio"],
+            "contact_number": data["contact_number"],
+        }
+
+
+class DocumentReviewForm(forms.Form):
+    """
+    Step 2 of issuance: review, and optionally edit, the auto-populated
+    document before it becomes a real, numbered IssuedDocument. Nothing
+    here is saved until this form is submitted -- see numbering.
+    issue_document(), which only ever runs at this point, never at step 1.
+
+    document_type travels forward as a hidden field rather than being
+    re-selectable on this screen: changing it would mean re-rendering
+    body_text from scratch, so going back to step 1 is the right way to
+    do that, not a hidden reset baked into this form.
+    """
+
+    document_type = forms.ModelChoiceField(
+        queryset=DocumentType.objects.filter(is_active=True), widget=forms.HiddenInput,
+    )
+    purpose = forms.CharField(max_length=255, required=False)
+    document_date = forms.DateField(
+        label="Document date",
+        widget=forms.SelectDateWidget(years=range(2000, datetime.date.today().year + 2)),
+        help_text="Defaults to today. What's printed on the document -- editable here if it needs to be corrected or backdated.",
+    )
+    body_text = forms.CharField(
+        label="Document text",
+        widget=forms.Textarea(attrs={"rows": 14}),
+        help_text="Auto-populated from the document type's template. Review and adjust before printing.",
+    )
+
+
+class WalkInDocumentReviewForm(DocumentReviewForm):
+    """
+    The same review step for "Print without an account" -- adds the
+    walk-in recipient's details as hidden carry-forward values. They were
+    already entered and validated in step 1; this step is about reviewing
+    the generated text, not re-entering who it's for.
+    """
+
+    full_name = forms.CharField(widget=forms.HiddenInput)
+    address = forms.CharField(required=False, widget=forms.HiddenInput)
+    birth_date = forms.CharField(required=False, widget=forms.HiddenInput)
+    sex = forms.CharField(required=False, widget=forms.HiddenInput)
+    civil_status = forms.CharField(required=False, widget=forms.HiddenInput)
+    purok_or_sitio = forms.CharField(required=False, widget=forms.HiddenInput)
+    contact_number = forms.CharField(required=False, widget=forms.HiddenInput)
+
+    def walk_in_details(self):
+        data = self.cleaned_data
+        return {
+            "full_name": data["full_name"],
+            "address": data["address"],
+            "birth_date": data["birth_date"],
             "sex": data["sex"],
             "civil_status": data["civil_status"],
             "purok_or_sitio": data["purok_or_sitio"],

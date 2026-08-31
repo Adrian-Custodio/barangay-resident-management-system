@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from residents.models import Resident
 
@@ -66,8 +67,30 @@ class IssuedDocument(models.Model):
     issued_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True
     )
+    # The system's own record of when this row was created -- immutable
+    # (auto_now_add), used for control-number sequencing and audit
+    # ordering. NOT what's printed on the document; see document_date.
     issued_at = models.DateTimeField(auto_now_add=True)
     purpose = models.CharField(max_length=255, blank=True)
+
+    # The date shown on the printed document. Defaults to today but is
+    # editable in the review step before finalizing (an office sometimes
+    # needs to correct or backdate this) -- deliberately a separate field
+    # from issued_at rather than making issued_at itself editable, so the
+    # true "when was this actually issued" system record can never be
+    # quietly rewritten.
+    document_date = models.DateField(default=timezone.localdate)
+
+    # The rendered document text as reviewed and (optionally) edited by
+    # the admin, captured at issuance time -- not regenerated from
+    # document_type.template_body on every view. Without this, editing a
+    # DocumentType's wording later would silently rewrite the text of
+    # every document already issued from it, which is wrong for records
+    # that are supposed to be an immutable account of what was actually
+    # printed. Blank on rows created before this field existed; those
+    # still fall back to live rendering (see rendering.build_subject and
+    # views._RenderedDocumentMixin).
+    body_text = models.TextField(blank=True, default="")
 
     class Meta:
         ordering = ["-issued_at"]

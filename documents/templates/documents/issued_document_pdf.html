@@ -24,7 +24,7 @@
 
   <table class="meta">
     <tr><td class="label">Issued to</td><td>{{ issued_document.recipient_name }}</td></tr>
-    <tr><td class="label">Issued on</td><td>{{ issued_document.issued_at|date:"F j, Y" }}</td></tr>
+    <tr><td class="label">Issued on</td><td>{{ issued_document.document_date|date:"F j, Y" }}</td></tr>
     <tr><td class="label">Issued by</td><td>{{ issued_document.issued_by|default:"—" }}</td></tr>
   </table>
 </body>

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Review {{ document_type.name }} - Barangay RMS{% endblock %}
+
+{% block content %}
+<h1>Review before printing</h1>
+<p class="subtitle">{{ document_type.name }} for {{ recipient_label }}</p>
+<p class="notice">
+  This is auto-populated from the resident's record{% if not resident %} and the details you entered{% endif %}.
+  Review and edit anything below before it becomes a numbered document -- nothing is saved until you generate it.
+</p>
+
+<form method="post" class="stacked-form" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <ul class="form-errors">{% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+
+  <div class="field {% if form.purpose.errors %}field--error{% endif %}">
+    {{ form.purpose.label_tag }}
+    {{ form.purpose }}
+    {% for error in form.purpose.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  </div>
+
+  <div class="field field--date {% if form.document_date.errors %}field--error{% endif %}">
+    {{ form.document_date.label_tag }}
+    {{ form.document_date }}
+    {% if form.document_date.help_text %}<p class="field__help">{{ form.document_date.help_text }}</p>{% endif %}
+    {% for error in form.document_date.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  </div>
+
+  <div class="field field--wide {% if form.body_text.errors %}field--error{% endif %}">
+    {{ form.body_text.label_tag }}
+    {{ form.body_text }}
+    {% if form.body_text.help_text %}<p class="field__help">{{ form.body_text.help_text }}</p>{% endif %}
+    {% for error in form.body_text.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn--primary">Generate &amp; print</button>
+    <a href="{{ cancel_url }}" class="btn btn--ghost">Cancel</a>
+  </div>
+</form>
+{% endblock %}

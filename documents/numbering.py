@@ -30,13 +30,20 @@ def _next_control_number(year):
     return f"{settings.BARANGAY_CODE}-{year}-{sequence:04d}"
 
 
-def issue_document(*, document_type, purpose, issued_by, resident=None, walk_in_details=None):
+def issue_document(*, document_type, purpose, issued_by, body_text, document_date,
+                    resident=None, walk_in_details=None):
     """
     Creates the IssuedDocument row with a freshly generated control
     number, retrying with the next number if a concurrent request won the
     same one first. control_number's DB-level uniqueness constraint is
     the actual source of truth here -- the retry loop is just what makes
     that constraint survive a race instead of surfacing as a 500 error.
+
+    Only ever called once the admin has reviewed (and possibly edited)
+    body_text and document_date on the review screen -- this is the
+    single point where a preview becomes a real, numbered record, so
+    control numbers are never consumed by an issuance someone abandoned
+    partway through.
 
     Exactly one of resident / walk_in_details must be given -- this is
     the single call path every issuance goes through (the normal
@@ -60,6 +67,8 @@ def issue_document(*, document_type, purpose, issued_by, resident=None, walk_in_
                     control_number=control_number,
                     issued_by=issued_by,
                     purpose=purpose,
+                    body_text=body_text,
+                    document_date=document_date,
                 )
         except IntegrityError as exc:
             last_error = exc

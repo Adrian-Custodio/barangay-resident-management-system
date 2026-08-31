@@ -12,9 +12,10 @@ DocumentType views), and Django templates can't execute arbitrary Python
 regardless -- only reach attributes/methods already exposed to the
 context.
 """
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
 
 from django.template import Context, Template
+from django.utils import timezone
 
 from residents.models import Resident
 
@@ -73,3 +74,30 @@ def render_document_body(document_type, *, resident, issued_document):
         "purpose": issued_document.purpose,
     })
     return template.render(context)
+
+
+@dataclass
+class PreviewDocument:
+    """
+    Stands in for {{ document }} while rendering the review-screen preview
+    of a document that doesn't exist as a row yet. control_number is
+    blank rather than pre-reserved: generating one is what
+    numbering.issue_document() does at the moment an admin actually
+    finalizes, specifically so a preview nobody confirms never burns a
+    number out of the sequence.
+    """
+
+    purpose: str = ""
+    control_number: str = ""
+    document_date: object = field(default_factory=timezone.localdate)
+
+
+def render_preview(document_type, *, resident, purpose):
+    """
+    Renders document_type.template_body for the review screen, before any
+    IssuedDocument exists -- the text an admin sees and can edit prior to
+    issue_document() actually creating the real, numbered record.
+    """
+    return render_document_body(
+        document_type, resident=resident, issued_document=PreviewDocument(purpose=purpose),
+    )
