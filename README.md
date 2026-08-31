@@ -14,37 +14,33 @@ This is an in-progress build of an earlier working version of the system.
 
 ## Architecture
 
-The system is split into five Django apps, each with a single responsibility:
+The system is split into six Django apps, each with a single responsibility:
 
 | App | Responsibility |
 |---|---|
-| `accounts` | User roles (Administrator / Encoder) via a `Profile` extending Django's built-in `User` |
-| `residents` | Core resident records — the entity every other app relates back to |
-| `recognition` | Face enrollment and verification, storing facial embeddings (not raw photos) |
-| `documents` | Catalog of issuable document types and records of documents actually issued |
+| `accounts` | User roles (Administrator / Encoder) via a `Profile` extending Django's built-in `User`, plus `AdminRequiredMixin` for gating admin-only views |
+| `residents` | Core resident records — the entity every other app relates back to — with fuzzy name search |
+| `recognition` | Face enrollment, 1:1 verification, and 1:N identification, storing facial embeddings (not raw photos) |
+| `documents` | Catalog of issuable document types and records of documents actually issued, including walk-in issuance with no resident account |
 | `audit` | A single, generic action log shared across all apps, using Django's `GenericForeignKey` |
+| `core` | The post-login home page: camera-scan resident identification, the officials directory, and site display settings |
 
 Deployment target is a single-machine, offline-capable barangay office setup — this shaped decisions like SQLite over a client-server database, and Waitress (pure-Python WSGI server) over Gunicorn for eventual Windows packaging.
 
 ## Current Status
 
 **Done**
-- Project scaffolding: 5-app structure with clear domain boundaries
-- Full data model layer:
-  - `Resident` — core resident record with separated name fields for accurate document formatting
-  - `Profile` — two-tier role system (Administrator / Encoder)
-  - `FaceProfile` / `FaceVerificationAttempt` — face embedding storage and verification history, decoupled from raw images
-  - `DocumentType` / `IssuedDocument` — catalog vs. transaction pattern for the 23 barangay document types
-  - `AuditLog` — polymorphic action logging via `GenericForeignKey`, with zero dependency on the apps it logs
-- Migrations generated and verified against a clean SQLite database
-- Django admin registered for all models (manual data entry/inspection during development)
+- Project scaffolding: 6-app structure with clear domain boundaries
+- Full data model layer, migrated and verified against a clean SQLite database
 - Login-gated resident CRUD (`residents` app), with fuzzy name search (`thefuzz`) and soft delete (`is_active`)
-- Face enrollment/verification (`recognition` app) via DeepFace/Facenet — see **Face recognition environment** below, it needs a second Python interpreter
-- Document generation (`documents` app): DocumentType management, resident-scoped issuance with auto-generated `{BARANGAY_CODE}-{year}-{sequence}` control numbers, a printable HTML view, and PDF export via `xhtml2pdf`
+- Face enrollment, 1:1 verification, and 1:N identification (`recognition` app) via DeepFace/Facenet — see **Face recognition environment** below, it needs a second Python interpreter
+- Document generation (`documents` app): DocumentType management, resident-scoped issuance with auto-generated `{BARANGAY_CODE}-{year}-{sequence}` control numbers, walk-in issuance for people with no resident account, a printable HTML view, and PDF export via `xhtml2pdf`
+- Home page (`core` app): click-to-capture camera scan that identifies a resident and hands off to document issuance, with manual search and walk-in printing as first-class alternatives; an officials directory (elected/appointed) and an admin-editable background image
+- Role enforcement: `AdminRequiredMixin` restricts deleting residents and managing DocumentTypes/officials/site settings to `Profile.role == ADMIN`; everything else is open to any logged-in encoder
+- Audit logging wired into resident create/update/soft-delete, document issuance (including walk-in), and face verification/identification attempts (success and failure)
+- Django admin registered for all models (manual data entry/inspection during development)
 
 **Soon**
-- Authentication-aware permissions per role
-- Audit log wiring
 - Deployment packaging (Waitress + PyInstaller)
 
 ## Setup
