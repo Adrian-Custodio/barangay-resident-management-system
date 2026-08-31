@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Officials Roster - Barangay RMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Officials Roster</h1>
+  <a href="{% url 'core:official_create' %}" class="btn btn--primary">+ Add official</a>
+</div>
+
+{% if officials %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Position</th>
+        <th>Category</th>
+        <th>Order</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for official in officials %}
+      <tr>
+        <td>{{ official.name }}</td>
+        <td>{{ official.position }}</td>
+        <td>{{ official.get_category_display }}</td>
+        <td>{{ official.display_order }}</td>
+        <td>
+          {% if official.is_active %}
+            <span class="badge badge--active">Active</span>
+          {% else %}
+            <span class="badge badge--inactive">Hidden</span>
+          {% endif %}
+        </td>
+        <td class="data-table__actions">
+          <a href="{% url 'core:official_update' official.pk %}">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="empty-state">No officials added yet.</p>
+{% endif %}
+
+<p><a href="{% url 'core:home' %}">&larr; Back to home</a></p>
+{% endblock %}

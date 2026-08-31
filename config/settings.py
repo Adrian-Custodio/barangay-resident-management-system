@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'recognition',
     'documents',
     'audit',
+    'core',
 ]
 
 MIDDLEWARE = [
@@ -125,6 +126,12 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
+# Uploaded, persisted images (core.Official / core.SiteSettings photos) --
+# distinct from face-recognition photos, which are deliberately never
+# written here or anywhere else (see recognition/face_worker.py).
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -136,7 +143,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # login wall — there's no public-facing area, so the login redirect target
 # is simply "wherever staff work", not a marketing page.
 LOGIN_URL = 'accounts:login'
-LOGIN_REDIRECT_URL = 'residents:resident_list'
+LOGIN_REDIRECT_URL = 'core:home'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
 

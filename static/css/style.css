@@ -19,6 +19,13 @@
 
 * { box-sizing: border-box; }
 
+/* Without this, any element the JS toggles with `.hidden = true` (the
+   home page's Start Camera button, scan status/confirm panels) stays
+   visible whenever a class elsewhere sets its own `display` -- an author
+   stylesheet rule always wins over the browser's default
+   `[hidden] { display: none }`, even at equal specificity. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--color-bg);
@@ -341,4 +348,122 @@ input:focus, select:focus, textarea:focus {
   .page-header { flex-direction: column; align-items: flex-start; }
   .document-sheet { padding: 1.75rem 1.25rem; }
   .data-table th, .data-table td { padding: 0.5rem 0.6rem; }
+}
+
+/* --- Home page --- */
+
+.home-hero {
+  border-radius: var(--radius);
+  background-color: var(--color-primary);
+  background-size: cover;
+  background-position: center;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+.home-hero__overlay {
+  background: linear-gradient(180deg, rgba(22, 58, 92, 0.55), rgba(22, 58, 92, 0.75));
+  color: #fff;
+  padding: 2.25rem 2rem;
+}
+.home-hero__overlay h1 { margin-bottom: 0.35rem; }
+.home-hero__overlay .subtitle { color: #e4ecf5; margin: 0; }
+
+.home-admin-links { font-size: 0.85rem; color: var(--color-text-muted); margin: 0 0 1.25rem; }
+
+.home-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) 200px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.officials-column h2 { font-size: 0.95rem; margin-bottom: 0.75rem; }
+
+.official-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0.85rem;
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+.official-card__photo {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin: 0 auto 0.5rem;
+  display: block;
+}
+.official-card__photo--placeholder {
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.3rem;
+  text-transform: uppercase;
+}
+.official-card__name { font-weight: 600; font-size: 0.88rem; }
+.official-card__position { font-size: 0.78rem; color: var(--color-text-muted); }
+
+.empty-state--compact { padding: 1rem 0.75rem; font-size: 0.82rem; }
+
+.scan-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  text-align: center;
+}
+.scan-panel h2 { font-size: 1.1rem; margin-bottom: 1rem; }
+
+.scan-panel__camera {
+  background: #11151a;
+  border-radius: var(--radius);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  max-width: 420px;
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.scan-panel__camera video { width: 100%; height: 100%; object-fit: cover; }
+
+.scan-panel__controls { display: flex; gap: 0.6rem; justify-content: center; margin-bottom: 0.9rem; }
+
+.scan-status {
+  border-radius: var(--radius);
+  padding: 0.6rem 0.9rem;
+  font-size: 0.88rem;
+  margin-bottom: 0.9rem;
+}
+.scan-status--info { background: #e8f0fa; color: #1f4e79; }
+.scan-status--error { background: #fdecea; color: #9a2a22; }
+
+.scan-confirm {
+  background: #e6f4ea;
+  border: 1px solid #b7dfc2;
+  border-radius: var(--radius);
+  padding: 0.9rem;
+  margin-bottom: 1rem;
+}
+.scan-confirm p { margin: 0 0 0.6rem; font-size: 0.92rem; }
+
+.scan-panel__fallback {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 900px) {
+  .home-layout { grid-template-columns: 1fr; }
+  .officials-column { display: flex; gap: 0.75rem; overflow-x: auto; }
+  .official-card { min-width: 140px; }
 }

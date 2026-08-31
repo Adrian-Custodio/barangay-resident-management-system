@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Home Page Settings - Barangay RMS{% endblock %}
+
+{% block content %}
+<h1>Home Page Settings</h1>
+
+{% if object.background_image %}
+<div class="field">
+  <label>Current background</label>
+  <img src="{{ object.background_image.url }}" alt="Current home page background" style="max-width: 420px; display:block; border-radius: var(--radius); border: 1px solid var(--color-border);">
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" class="stacked-form" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <ul class="form-errors">{% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% for field in form %}
+  <div class="field {% if field.errors %}field--error{% endif %}">
+    {{ field.label_tag }}
+    {{ field }}
+    {% for error in field.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  </div>
+  {% endfor %}
+  <div class="form-actions">
+    <button type="submit" class="btn btn--primary">Save</button>
+    <a href="{% url 'core:home' %}" class="btn btn--ghost">Cancel</a>
+  </div>
+</form>
+{% endblock %}

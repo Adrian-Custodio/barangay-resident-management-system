@@ -14,9 +14,10 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
-from django.views.generic import RedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -24,8 +25,10 @@ urlpatterns = [
     path('residents/', include('residents.urls')),
     path('face/', include('recognition.urls')),
     path('documents/', include('documents.urls')),
-    # The resident list is the actual "home screen" for staff logging in --
-    # there's no separate dashboard/landing page in this system, so root
-    # just forwards there instead of rendering its own empty page.
-    path('', RedirectView.as_view(pattern_name='residents:resident_list', permanent=False)),
+    # core.urls owns '' (the home page) -- it's the actual post-login
+    # landing page now, not a redirect to the resident list.
+    path('', include('core.urls')),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Home - Barangay RMS{% endblock %}
+
+{% block content %}
+<div class="home-hero"{% if site_settings.background_image %} style="background-image: url('{{ site_settings.background_image.url }}');"{% endif %}>
+  <div class="home-hero__overlay">
+    <h1>Welcome, {{ user.get_username }}</h1>
+    <p class="subtitle">Scan a resident's face, search for their account, or print a document for a walk-in.</p>
+  </div>
+</div>
+
+{% if user.profile.is_admin %}
+<p class="home-admin-links no-print">
+  <a href="{% url 'core:site_settings' %}">Edit home page background</a>
+  &middot;
+  <a href="{% url 'core:official_list' %}">Manage officials roster</a>
+</p>
+{% endif %}
+
+<div class="home-layout">
+  <aside class="officials-column">
+    <h2>Elected Officials</h2>
+    {% for official in elected_officials %}
+      <div class="official-card">
+        {% if official.photo %}
+          <img src="{{ official.photo.url }}" alt="{{ official.name }}" class="official-card__photo">
+        {% else %}
+          <div class="official-card__photo official-card__photo--placeholder">{{ official.name|slice:":1" }}</div>
+        {% endif %}
+        <div class="official-card__name">{{ official.name }}</div>
+        <div class="official-card__position">{{ official.position }}</div>
+      </div>
+    {% empty %}
+      <p class="empty-state empty-state--compact">No elected officials added yet.</p>
+    {% endfor %}
+  </aside>
+
+  <section class="scan-panel">
+    <h2>Identify Resident</h2>
+    <div class="scan-panel__camera">
+      <video id="scan-video" autoplay playsinline muted></video>
+      <canvas id="scan-canvas" hidden></canvas>
+    </div>
+    <div class="scan-panel__controls">
+      <button type="button" id="start-camera-btn" class="btn">Start Camera</button>
+      <button type="button" id="scan-btn" class="btn btn--primary" disabled data-identify-url="{% url 'recognition:face_identify' %}">Scan Face</button>
+    </div>
+    <div id="scan-status" class="scan-status" hidden></div>
+    <div id="scan-confirm" class="scan-confirm" hidden>
+      <p>Is this <strong id="scan-confirm-name"></strong>?</p>
+      <a id="scan-confirm-yes" class="btn btn--primary" href="#">Yes, choose a document</a>
+      <button type="button" id="scan-confirm-no" class="btn btn--ghost">No, scan again</button>
+    </div>
+    {% csrf_token %}
+
+    <div class="scan-panel__fallback">
+      <a href="{% url 'residents:resident_list' %}" class="btn">Search manually</a>
+      <a href="{% url 'documents:walk_in_issue' %}" class="btn">Print without an account</a>
+    </div>
+  </section>
+
+  <aside class="officials-column">
+    <h2>Appointed Staff</h2>
+    {% for official in appointed_officials %}
+      <div class="official-card">
+        {% if official.photo %}
+          <img src="{{ official.photo.url }}" alt="{{ official.name }}" class="official-card__photo">
+        {% else %}
+          <div class="official-card__photo official-card__photo--placeholder">{{ official.name|slice:":1" }}</div>
+        {% endif %}
+        <div class="official-card__name">{{ official.name }}</div>
+        <div class="official-card__position">{{ official.position }}</div>
+      </div>
+    {% empty %}
+      <p class="empty-state empty-state--compact">No appointed staff added yet.</p>
+    {% endfor %}
+  </aside>
+</div>
+
+<script src="{% static 'js/face_scan.js' %}"></script>
+{% endblock %}
