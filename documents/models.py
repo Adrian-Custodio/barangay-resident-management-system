@@ -37,10 +37,27 @@ class IssuedDocument(models.Model):
     physical barangay documents need a traceable reference so their
     authenticity can be verified later. Enforcing uniqueness at the
     schema level turns a paperwork rule into a database constraint.
+
+    resident is nullable to support "Print without an account" (a walk-in
+    who isn't in the Resident table at all): walk_in_details then carries
+    whatever the encoder typed by hand -- a dict rather than a matching
+    set of nullable columns, because it's rendered into the exact same
+    document_type.template_body a real Resident would be (see
+    rendering.py's WalkInSubject), so it only ever needs to hold
+    Resident-shaped data, never grow its own independent schema.
+    A row always has exactly one of resident or walk_in_details set, never
+    both, never neither -- enforced in numbering.issue_document(), not at
+    the DB level (SQLite's CHECK constraint support makes that more
+    friction than the guarantee is worth here).
     """
 
     resident = models.ForeignKey(
-        Resident, on_delete=models.PROTECT, related_name="issued_documents"
+        Resident, on_delete=models.PROTECT, related_name="issued_documents",
+        null=True, blank=True,
+    )
+    walk_in_details = models.JSONField(
+        null=True, blank=True,
+        help_text="Manually entered recipient info for a walk-in with no Resident record.",
     )
     document_type = models.ForeignKey(
         DocumentType, on_delete=models.PROTECT, related_name="issuances"
@@ -56,4 +73,12 @@ class IssuedDocument(models.Model):
         ordering = ["-issued_at"]
 
     def __str__(self):
-        return f"{self.control_number} - {self.document_type.name} - {self.resident.full_name}"
+        recipient = self.resident.full_name if self.resident_id else self.recipient_name
+        return f"{self.control_number} - {self.document_type.name} - {recipient}"
+
+    @property
+    def recipient_name(self):
+        """Works whether this was issued to a real Resident or a walk-in."""
+        if self.resident_id:
+            return self.resident.full_name
+        return (self.walk_in_details or {}).get("full_name", "Walk-in")

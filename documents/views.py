@@ -15,11 +15,12 @@ from accounts.mixins import AdminRequiredMixin
 from audit.models import AuditLog
 from audit.services import log_action
 from residents.models import Resident
+from residents.search import fuzzy_search_residents
 
-from .forms import DocumentTypeForm, IssueDocumentForm
+from .forms import DocumentTypeForm, IssueDocumentForm, WalkInIssueForm
 from .models import DocumentType, IssuedDocument
 from .numbering import issue_document
-from .rendering import render_document_body
+from .rendering import build_subject, render_document_body
 
 
 class DocumentTypeListView(LoginRequiredMixin, ListView):
@@ -99,13 +100,75 @@ class IssueDocumentView(LoginRequiredMixin, View):
         return redirect("documents:issued_document_detail", pk=issued_document.pk)
 
 
+class WalkInIssueView(LoginRequiredMixin, View):
+    """
+    "Print without an account": issuing a document to someone without
+    going through resident registration first. Two paths from the one
+    page:
+
+    1. Type a name -> if it fuzzy-matches an existing resident, hand off
+       to the normal IssueDocumentView so the document links to their
+       real record. Chosen deliberately over "autofill but never link":
+       someone who already has an account shouldn't end up with a second,
+       unlinked paper trail just because the front-desk flow started from
+       the walk-in page instead of their resident page.
+    2. No match (or the encoder confirms this really is a first-time
+       walk-in) -> a fully manual form with no Resident behind it at all;
+       renders through a WalkInSubject built from whatever was typed (see
+       rendering.py), never a row in the residents app.
+    """
+
+    template_name = "documents/walk_in_issue.html"
+
+    def get(self, request):
+        query = request.GET.get("q", "").strip()
+        manual = request.GET.get("manual") == "1" or bool(query)
+        matches = self._search(query) if query else []
+        context = {
+            "query": query,
+            "matches": matches,
+            "manual": manual,
+            "form": WalkInIssueForm(initial={"full_name": query} if query else None),
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        form = WalkInIssueForm(request.POST)
+        if not form.is_valid():
+            query = request.POST.get("full_name", "")
+            context = {"query": query, "matches": self._search(query), "manual": True, "form": form}
+            return render(request, self.template_name, context)
+
+        walk_in_details = form.walk_in_details()
+        issued_document = issue_document(
+            walk_in_details=walk_in_details,
+            document_type=form.cleaned_data["document_type"],
+            purpose=form.cleaned_data["purpose"],
+            issued_by=request.user,
+        )
+        log_action(
+            request.user, AuditLog.Action.DOCUMENT_ISSUED, issued_document,
+            detail=f"{issued_document.document_type.name} for walk-in {walk_in_details['full_name']} (no account)",
+        )
+        messages.success(
+            request,
+            f"Issued {issued_document.document_type.name} ({issued_document.control_number}) "
+            f"to {walk_in_details['full_name']} (no account).",
+        )
+        return redirect("documents:issued_document_detail", pk=issued_document.pk)
+
+    @staticmethod
+    def _search(query):
+        return list(fuzzy_search_residents(query, Resident.objects.filter(is_active=True), limit=5))
+
+
 class _RenderedDocumentMixin(SingleObjectMixin):
     model = IssuedDocument
 
     def get_rendered_body(self, issued_document):
         return render_document_body(
             issued_document.document_type,
-            resident=issued_document.resident,
+            resident=build_subject(issued_document),
             issued_document=issued_document,
         )
 

@@ -30,14 +30,23 @@ def _next_control_number(year):
     return f"{settings.BARANGAY_CODE}-{year}-{sequence:04d}"
 
 
-def issue_document(*, resident, document_type, purpose, issued_by):
+def issue_document(*, document_type, purpose, issued_by, resident=None, walk_in_details=None):
     """
     Creates the IssuedDocument row with a freshly generated control
     number, retrying with the next number if a concurrent request won the
     same one first. control_number's DB-level uniqueness constraint is
     the actual source of truth here -- the retry loop is just what makes
     that constraint survive a race instead of surfacing as a 500 error.
+
+    Exactly one of resident / walk_in_details must be given -- this is
+    the single call path every issuance goes through (the normal
+    resident-scoped flow and "Print without an account" both end up
+    here), so it's the right place to enforce that invariant once instead
+    of trusting every caller to get it right.
     """
+    if bool(resident) == bool(walk_in_details):
+        raise ValueError("issue_document requires exactly one of resident or walk_in_details.")
+
     year = timezone.now().year
     last_error = None
     for _ in range(MAX_ISSUANCE_ATTEMPTS):
@@ -46,6 +55,7 @@ def issue_document(*, resident, document_type, purpose, issued_by):
             with transaction.atomic():
                 return IssuedDocument.objects.create(
                     resident=resident,
+                    walk_in_details=walk_in_details,
                     document_type=document_type,
                     control_number=control_number,
                     issued_by=issued_by,
