@@ -24,3 +24,29 @@ def cosine_distance(a: list[float], b: list[float]) -> float:
         return 1.0  # a degenerate (all-zero) embedding can't match anything
     cosine_similarity = dot / (norm_a * norm_b)
     return 1 - cosine_similarity
+
+
+def find_best_match(probe_embedding, face_profiles):
+    """
+    1:N identification: which enrolled FaceProfile (if any) is closest to
+    probe_embedding. Used by the home-page camera scan, which doesn't know
+    in advance whose face it's looking at -- unlike FaceVerifyView's 1:1
+    check against one resident chosen ahead of time.
+
+    Returns (best_profile, best_distance), both None if face_profiles is
+    empty. Callers compare best_distance against FACE_MATCH_THRESHOLD
+    themselves -- finding the closest profile and deciding whether it's
+    close *enough* are different questions.
+
+    A linear scan over every profile is fine at barangay scale (hundreds
+    to a few thousand residents) -- the same complexity trade-off
+    ResidentListView's fuzzy search already makes, for the same reason.
+    """
+    best_profile = None
+    best_distance = None
+    for profile in face_profiles:
+        distance = cosine_distance(probe_embedding, profile.embedding)
+        if best_distance is None or distance < best_distance:
+            best_distance = distance
+            best_profile = profile
+    return best_profile, best_distance

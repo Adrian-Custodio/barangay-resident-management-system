@@ -1,10 +1,8 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Case, When
 from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
-from thefuzz import process
 
 from accounts.mixins import AdminRequiredMixin
 from audit.models import AuditLog
@@ -12,13 +10,7 @@ from audit.services import log_action
 
 from .forms import ResidentForm
 from .models import Resident
-
-# Below this score (0-100, thefuzz's similarity scale) a match is more
-# likely coincidence than a real hit on a misspelled/misremembered name.
-# Chosen empirically rather than derived: low enough to survive a
-# transposed letter or missing middle name, high enough that a two-letter
-# query doesn't return half the barangay.
-FUZZY_MATCH_THRESHOLD = 60
+from .search import fuzzy_search_residents
 
 
 class ResidentListView(LoginRequiredMixin, ListView):
@@ -39,26 +31,7 @@ class ResidentListView(LoginRequiredMixin, ListView):
         query = self.request.GET.get("q", "").strip()
         if not query:
             return queryset
-
-        # Fuzzy search happens in Python, over this request's queryset,
-        # rather than as a DB query -- see the note on Resident.full_name.
-        # This is fine at barangay scale (hundreds to a few thousand
-        # residents); it would need to move to a real search index well
-        # before it became a bottleneck.
-        candidates = {resident.pk: resident.full_name for resident in queryset}
-        if not candidates:
-            return queryset.none()
-
-        matches = process.extract(query, candidates, limit=50)
-        matched_pks = [pk for _, score, pk in matches if score >= FUZZY_MATCH_THRESHOLD]
-        if not matched_pks:
-            return queryset.none()
-
-        # Preserve thefuzz's best-match-first ordering -- without this,
-        # the DB's default ordering (last_name, first_name) would silently
-        # discard the ranking that made the search useful in the first place.
-        preserve_order = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(matched_pks)])
-        return queryset.filter(pk__in=matched_pks).order_by(preserve_order)
+        return fuzzy_search_residents(query, queryset)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

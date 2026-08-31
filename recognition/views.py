@@ -1,7 +1,9 @@
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views import View
 
 from audit.models import AuditLog
@@ -10,7 +12,7 @@ from residents.models import Resident
 
 from .face_engine import FaceEngineError, NoFaceDetectedError, extract_embedding
 from .forms import FacePhotoForm
-from .matching import cosine_distance
+from .matching import cosine_distance, find_best_match
 from .models import FaceProfile, FaceVerificationAttempt
 
 
@@ -119,3 +121,61 @@ class FaceVerifyView(LoginRequiredMixin, View):
 
         context.update({"form": FacePhotoForm(), "attempt": attempt})
         return render(request, self.template_name, context)
+
+
+class FaceIdentifyView(LoginRequiredMixin, View):
+    """
+    1:N identification for the home-page camera scan: "who is this?"
+    rather than FaceVerifyView's "is this the resident I already picked?".
+    A JSON endpoint (called via fetch() from core/home.html's JS), not a
+    full page -- the home page reacts to the result inline instead of
+    navigating away and back.
+
+    Only a successful identification is recorded (FaceVerificationAttempt
+    + AuditLog). A "matched nobody" scan has no resident to attach a
+    record to under the current schema (both FaceVerificationAttempt.resident
+    and AuditLog's GenericForeignKey require a real target) -- and unlike a
+    failed 1:1 check against one specific resident, it isn't itself a
+    security-relevant event; it just means "use Search manually instead",
+    which the UI already offers right there.
+    """
+
+    def post(self, request):
+        photo = request.FILES.get("photo")
+        if not photo:
+            return JsonResponse({"matched": False, "error": "No photo provided."}, status=400)
+
+        try:
+            probe_embedding = extract_embedding(photo.read())
+        except NoFaceDetectedError as exc:
+            return JsonResponse({"matched": False, "error": str(exc)})
+        except FaceEngineError as exc:
+            return JsonResponse({"matched": False, "error": str(exc)}, status=503)
+
+        profiles = FaceProfile.objects.filter(resident__is_active=True).select_related("resident")
+        best_profile, best_distance = find_best_match(probe_embedding, profiles)
+        threshold = settings.FACE_MATCH_THRESHOLD
+        matched = best_profile is not None and best_distance <= threshold
+
+        if not matched:
+            return JsonResponse({
+                "matched": False,
+                "distance": round(best_distance, 4) if best_distance is not None else None,
+            })
+
+        resident = best_profile.resident
+        attempt = FaceVerificationAttempt.objects.create(
+            resident=resident, distance=best_distance, threshold=threshold, matched=True,
+        )
+        log_action(
+            request.user, AuditLog.Action.FACE_VERIFY_SUCCESS, attempt,
+            detail=f"Identified via home-page scan: {resident.full_name}, distance={best_distance:.4f}",
+        )
+        return JsonResponse({
+            "matched": True,
+            "resident_id": resident.pk,
+            "resident_name": resident.full_name,
+            "distance": round(best_distance, 4),
+            "detail_url": reverse("residents:resident_detail", args=[resident.pk]),
+            "issue_url": reverse("documents:issue_document", args=[resident.pk]),
+        })
