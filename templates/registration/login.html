@@ -6,6 +6,14 @@
 <div class="auth-card">
   <h1>Log in</h1>
   <p class="auth-card__subtitle">Barangay Resident Management System</p>
+  {% if demo_mode %}
+    <div class="demo-notice">
+      <p><strong>Online demo.</strong> All residents and officials are fictional, and the data resets whenever the server restarts.</p>
+      <p>Administrator: <code>demo_admin</code> / <code>{{ demo_password }}</code><br>
+         Encoder: <code>demo_encoder</code> / <code>{{ demo_password }}</code></p>
+      <p>Face enrollment stores only an embedding, never the photo, and is wiped on reset. The first face scan after a restart can take 10-20 seconds.</p>
+    </div>
+  {% endif %}
   <form method="post">
     {% csrf_token %}
     {% if form.non_field_errors %}

@@ -1,3 +1,13 @@
+---
+title: BRMS Demo
+colorFrom: blue
+colorTo: gray
+sdk: docker
+app_port: 7860
+pinned: false
+short_description: Barangay resident records, face ID and document issuance
+---
+
 # Barangay Resident Management System (BRMS)
 
 A Django-based resident management system built for barangays, featuring face recognition-based resident identification and digital document issuance.
@@ -10,7 +20,8 @@ This is an in-progress build of an earlier working version of the system.
 - **Database:** SQLite
 - **Face Recognition (planned):** DeepFace (Facenet)
 - **Fuzzy Search (planned):** thefuzz
-- **Deployment (planned):** Waitress + PyInstaller (Windows-packaged executable)
+- **Online demo:** Docker on Hugging Face Spaces (gunicorn + whitenoise)
+- **Offline deployment (planned):** Waitress + PyInstaller (Windows-packaged executable)
 
 ## Architecture
 
@@ -40,8 +51,10 @@ Deployment target is a single-machine, offline-capable barangay office setup —
 - Audit logging wired into resident create/update/soft-delete, document issuance (including walk-in), and face verification/identification attempts (success and failure)
 - Django admin registered for all models (manual data entry/inspection during development)
 
+- Online demo build: `Dockerfile` for Hugging Face Spaces with fictional seed data (`manage.py seed_demo`), see **Online demo** below
+
 **Soon**
-- Deployment packaging (Waitress + PyInstaller)
+- Offline deployment packaging (Waitress + PyInstaller)
 
 ## Setup
 
@@ -89,4 +102,33 @@ Each enrollment/verification call pays TensorFlow's cold-start cost
 between requests — acceptable for a low-volume, human-triggered flow like
 this; see the docstring in `face_engine.py` for the trade-off.
 
+## Online demo
 
+The `Dockerfile` builds a self-contained demo for a
+[Hugging Face Space](https://huggingface.co/docs/hub/spaces-sdks-docker)
+(free CPU tier, 16 GB RAM -- enough for TensorFlow). Inside the image,
+Django and DeepFace share one Python 3.11 interpreter, so the two-environment
+setup above is only needed for local development.
+
+On every start, `start.sh` migrates a fresh SQLite database, runs
+`manage.py seed_demo` (fictional residents, officials, and two logins:
+`demo_admin` and `demo_encoder`, password `brms-demo` unless
+`BRMS_DEMO_PASSWORD` is set), and starts gunicorn on port 7860. The Space's
+disk is ephemeral, so all data -- including any enrolled faces -- resets
+whenever it restarts or rebuilds.
+
+Deploying:
+
+1. Create a Space at https://huggingface.co/new-space with the **Docker**
+   SDK (blank template), e.g. `your-hf-username/brms-demo`.
+2. In the Space's settings, add a secret `DJANGO_SECRET_KEY` (optional --
+   one is generated per start if missing).
+3. Push this repo to the Space; it rebuilds from the `Dockerfile`:
+   `git push https://huggingface.co/spaces/your-hf-username/brms-demo main`
+   (use a Hugging Face access token with write access as the password).
+
+The app is served at `https://your-hf-username-brms-demo.hf.space`.
+Production settings are environment-driven (`DJANGO_DEBUG`,
+`DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`,
+`BRMS_DEMO_MODE`, `BRMS_FRAME_ANCESTORS`, ...); the Dockerfile sets the ones
+a Space needs. Local development needs none of them.

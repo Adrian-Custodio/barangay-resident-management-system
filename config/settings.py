@@ -17,16 +17,46 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+def env_bool(name, default=False):
+    return os.environ.get(name, str(default)).strip().lower() in ('1', 'true', 'yes', 'on')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-%yt9)or35__zpgwrffg=i7k)ymyogue=v_a+$6%j@xdi!oh7lz'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+def env_list(name, default=''):
+    return [item.strip() for item in os.environ.get(name, default).split(',') if item.strip()]
 
-ALLOWED_HOSTS = []
+
+# Local development works with no env vars set. A deployment (see the
+# Dockerfile) must set DJANGO_SECRET_KEY and DJANGO_DEBUG=0.
+DEBUG = env_bool('DJANGO_DEBUG', True)
+
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise RuntimeError('DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is off.')
+    SECRET_KEY = 'django-insecure-local-dev-only'
+
+ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,[::1]')
+CSRF_TRUSTED_ORIGINS = env_list('DJANGO_CSRF_TRUSTED_ORIGINS')
+
+# Public online demo: shows demo credentials on the login page and serves
+# uploaded media from Django itself (there's no separate file server).
+DEMO_MODE = env_bool('BRMS_DEMO_MODE', False)
+DEMO_PASSWORD = os.environ.get('BRMS_DEMO_PASSWORD', 'brms-demo')
+SERVE_MEDIA = DEBUG or env_bool('BRMS_SERVE_MEDIA', False)
+
+# Origins allowed to embed the app in an iframe (e.g. the Hugging Face
+# Space page). Empty keeps Django's default X-Frame-Options: DENY.
+FRAME_ANCESTORS = env_list('BRMS_FRAME_ANCESTORS')
+
+if not DEBUG:
+    # The host terminates TLS and forwards plain HTTP to the container.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    if FRAME_ANCESTORS:
+        # Cookies set inside a cross-site iframe are dropped unless SameSite=None.
+        SESSION_COOKIE_SAMESITE = 'None'
+        CSRF_COOKIE_SAMESITE = 'None'
 
 
 # Application definition
@@ -50,11 +80,14 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    # Before XFrameOptions so it sees the response after that header is set.
+    'core.middleware.FrameAncestorsMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -84,7 +117,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.environ.get('BRMS_SQLITE_PATH', BASE_DIR / 'db.sqlite3'),
     }
 }
 
@@ -125,12 +158,23 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {
+        'BACKEND': (
+            'django.contrib.staticfiles.storage.StaticFilesStorage'
+            if DEBUG
+            else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+        ),
+    },
+}
 
 # Uploaded, persisted images (core.Official / core.SiteSettings photos) --
 # distinct from face-recognition photos, which are deliberately never
 # written here or anywhere else (see recognition/face_worker.py).
 MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = Path(os.environ.get('BRMS_MEDIA_ROOT', BASE_DIR / 'media'))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -163,7 +207,7 @@ FACE_ENGINE_PYTHON = os.environ.get(
     'FACE_ENGINE_PYTHON',
     str(Path.home() / 'miniconda3' / 'envs' / 'brms-face' / 'bin' / 'python'),
 )
-FACE_ENGINE_TIMEOUT = 60  # seconds -- generous because a cold TensorFlow import is slow
+FACE_ENGINE_TIMEOUT = int(os.environ.get('FACE_ENGINE_TIMEOUT', 60))  # seconds -- generous because a cold TensorFlow import is slow
 
 # DeepFace's own published threshold for Facenet + cosine distance
 # (see deepface.modules.verification.find_threshold). Distances below this
